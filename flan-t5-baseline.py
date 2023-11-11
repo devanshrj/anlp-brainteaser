@@ -1,5 +1,7 @@
 import json
 import pandas as pd
+import tqdm
+
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 
@@ -27,17 +29,17 @@ prediction_data = {
     'choice_3': [],
 }
 
-file_path = "SP-train.json"
+file_path = "data/SP-train.json"
 with open(file_path) as f:
     data = json.load(f)
-print(len(data))
+print("Number of puzzles: ", len(data))
 
 # file_path = "SP-eval.json"
 # with open(file_path) as f:
 #     data = json.load(f)
 # print(len(data))
 
-for mcq in data:
+for mcq in tqdm.tqdm(data):
     prediction_data['id'].append(mcq['id'])
     prediction_data['question'].append(mcq['question'])
     prediction_data['answer'].append(mcq['answer'])
@@ -64,11 +66,9 @@ for mcq in data:
     inputs = tokenizer(prompt, return_tensors="pt")
     outputs = model.generate(**inputs)
     predicted_option = tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
-    # predicted_label = option2label[predicted_option]
     for k, v in option2label.items():
         if k in predicted_option:
             predicted_label = v
-    print(predicted_label)
 
     prediction_data['prediction'].append(predicted_label)
     if int(mcq['label']) == int(predicted_label):
@@ -79,9 +79,7 @@ for mcq in data:
 # print(prediction_data)
 prediction_df = pd.DataFrame(prediction_data)
 print(prediction_df)
-print(prediction_df.shape)
 
-prediction_df_og = prediction_df[prediction_df['group'] == 'OG']
-accuracy = prediction_df_og['correct'].sum() / prediction_df_og.shape[0]
-print(accuracy)
-# prediction_df.to_csv("SP-train-flant5-780M.csv")
+accuracy = prediction_df['correct'].sum() / prediction_df.shape[0]
+print("Overall accuracy: ", accuracy)
+prediction_df.to_csv("SP-train-flan-t5-780M.csv")
