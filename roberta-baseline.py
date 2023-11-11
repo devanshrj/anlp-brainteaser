@@ -89,12 +89,7 @@ def main():
     args = parser.parse_args()
     logger.info(args)
     task = 'brainteaser'
-    if args.lm != 'roberta-large':
-        model_path = ['roberta']+args.lm.split('/')[-1:]+[task]
-        model_path = '_'.join([m for m in model_path if m != ''])
-        out_dir = os.path.join(args.out_dir, model_path)
-    else:
-        out_dir = os.path.join(args.out_dir, 'roberta_'+task)
+    out_dir = os.path.join(args.out_dir)
     if os.path.exists(out_dir) and os.listdir(out_dir):
         raise ValueError("Output directory ({}) already exists and is not empty.".format(out_dir))
     if not os.path.exists(out_dir):
@@ -134,7 +129,13 @@ def main():
                     results.append(json.dumps(choices))
                 prediction = score_task(question, choices, tokenizer, device, model)
                 fields["prediction"] = prediction
-                # print("prediction:", prediction)
+                fields["correct"] = 1 if prediction == label else 0
+                if 'SR' in fields['id']:
+                    fields['group'] = 'SR'
+                if 'CR' in fields['id']:
+                    fields['group'] = 'CR'
+                else:
+                    fields['group'] = 'OG'
                 predictions.append(prediction)
                 f_out.write(json.dumps(fields) + "\n")
                 sample_id += 1
