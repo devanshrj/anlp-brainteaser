@@ -1,12 +1,10 @@
 import os
-import re
 import json
 import tqdm
 import torch
 import logging
 import argparse
 import numpy as np
-from overrides import overrides
 from torch.nn import CrossEntropyLoss
 from transformers import RobertaTokenizer, RobertaForMaskedLM
 
@@ -102,7 +100,6 @@ def main():
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     out_file = os.path.join(out_dir, 'predictions.jsonl')
-    out_file = 'predictions.jsonl'
     log_file = os.path.join(out_dir, 'results.txt')
 
     # Load the language model
