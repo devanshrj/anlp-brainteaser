@@ -8,9 +8,13 @@ tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-large")
 
 option2label = {
     '(A)': 0,
+    'A': 0,
     '(B)': 1,
+    'B': 1,
     '(C)': 2,
+    'C': 2,
     '(D)': 3,
+    'D': 3
 }
 
 prediction_data = {
@@ -27,7 +31,7 @@ prediction_data = {
     'choice_3': [],
 }
 
-file_path = "SP-train.json"
+file_path = "data/SP-train.json"
 with open(file_path) as f:
     data = json.load(f)
 print(len(data))
@@ -53,9 +57,10 @@ for mcq in data:
     else:
         prediction_data['group'].append('OG')
 
-    prompt = f"""Question: {mcq['question']}
+    prompt = f"""Please pick the best choice for the brain teaser. Each brain teaser has only one possible solution, including the choice none of the above, answer should only provide the choice.
+    Question: {mcq['question']}
 
-    What is the correct answer to the question from the following choices?
+    Options:
     (A) {mcq['choice_list'][0]}
     (B) {mcq['choice_list'][1]}
     (C) {mcq['choice_list'][2]}
@@ -65,6 +70,8 @@ for mcq in data:
     outputs = model.generate(**inputs)
     predicted_option = tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
     # predicted_label = option2label[predicted_option]
+    print(mcq['question'])
+    print(predicted_option)
     for k, v in option2label.items():
         if k in predicted_option:
             predicted_label = v
@@ -84,4 +91,4 @@ print(prediction_df.shape)
 prediction_df_og = prediction_df[prediction_df['group'] == 'OG']
 accuracy = prediction_df_og['correct'].sum() / prediction_df_og.shape[0]
 print(accuracy)
-# prediction_df.to_csv("SP-train-flant5-780M.csv")
+prediction_df.to_csv("SP-train-flant5-780M-chatgptprompt.csv")
