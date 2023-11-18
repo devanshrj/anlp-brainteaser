@@ -5,8 +5,8 @@ import tqdm
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 
-model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-large")
-tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-large")
+model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-xl")
+tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-xl")
 
 option2label = {
     '(A)': 0,
@@ -59,10 +59,9 @@ for mcq in tqdm.tqdm(data):
     else:
         prediction_data['group'].append('OG')
 
-    prompt = f"""Please pick the best choice for the brain teaser. Each brain teaser has only one possible solution, including the choice none of the above, answer should only provide the choice.
-    Question: {mcq['question']}
+    prompt = f"""Question: {mcq['question']}
 
-    Options:
+    What is the correct answer to the question from the following choices?
     (A) {mcq['choice_list'][0]}
     (B) {mcq['choice_list'][1]}
     (C) {mcq['choice_list'][2]}
@@ -87,4 +86,4 @@ print(prediction_df)
 
 accuracy = prediction_df['correct'].sum() / prediction_df.shape[0]
 print("Overall accuracy: ", accuracy)
-prediction_df.to_csv("SP-train-flant5-780M-chatgptprompt.csv")
+prediction_df.to_csv("SP-train-flant5-3B.csv")
