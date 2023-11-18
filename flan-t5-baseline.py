@@ -5,8 +5,8 @@ import tqdm
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 
-model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-xl")
-tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-xl")
+model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-xxl", device_map="auto")
+tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-xxl", device_map="auto")
 
 option2label = {
     '(A)': 0,
@@ -86,4 +86,4 @@ print(prediction_df)
 
 accuracy = prediction_df['correct'].sum() / prediction_df.shape[0]
 print("Overall accuracy: ", accuracy)
-prediction_df.to_csv("SP-train-flant5-3B.csv")
+prediction_df.to_csv("SP-train-flant5-11B.csv")
