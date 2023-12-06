@@ -35,6 +35,9 @@ model_paths = {
     'flan-t5-large-no-finetune': 'google/flan-t5-large',
     'flan-t5-large-rs-finetune': '/usr1/data/devanshj/brainteaser/checkpoints/flan-t5-large_full_finetune',
     'flan-t5-large-adv-finetune': '/usr1/data/devanshj/brainteaser/checkpoints/flan-t5-large_adversarial_finetune',
+    'flan-t5-xl-no-finetune': 'google/flan-t5-xl',
+    'flan-t5-xl-rs-finetune': '/usr1/data/devanshj/brainteaser/checkpoints/flan-t5-xl_full_finetune',
+    'flan-t5-xl-adv-finetune': '/usr1/data/devanshj/brainteaser/checkpoints/flan-t5-xl_adversarial_finetune',
 }
 
 for model_name, model_path in model_paths.items():
