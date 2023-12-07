@@ -198,8 +198,10 @@ def init_model(model_name: str,
     :return: the model and tokenizer
     """
     logger.info(f'Initializing {model_name}')
+    # tokenizer = RobertaTokenizer.from_pretrained(
+    #     model_name, cache_dir=cache_dir)
     tokenizer = RobertaTokenizer.from_pretrained(
-        model_name, cache_dir=cache_dir)
+        'roberta-large', cache_dir=cache_dir)
     model = RobertaForMaskedLM.from_pretrained(model_name, cache_dir=cache_dir)
     model.to(device)
     model.eval()
