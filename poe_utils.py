@@ -1,9 +1,67 @@
-from tqdm import tqdm
-
+import json
+import pandas as pd
 import torch
 import torch.nn.functional as F
+
+from collections import defaultdict
+from datasets import Dataset
 from torch.utils.data import DataLoader
-from transformers import GenerationConfig
+from tqdm import tqdm
+
+
+def brainteaser_loader(path, multiple_choice_prompt):
+    examples_bt = []
+    uncond_premise = " the answer is:"
+    with open(path) as f:
+        data = json.load(f)
+
+    count = 0
+    for mcq in data:
+        qid = mcq['id']
+        label = mcq['label']
+        premise = ' ' + mcq['question']
+        premise = premise[:-1] + '?'
+
+        options = mcq['choice_list']
+        if multiple_choice_prompt is not None:
+            hypotheses = ["A", "B", "C", "D"]
+            # premise = f"{multiple_choice_prompt} Question: {premise}\nA. {options[0]}\nB. {options[1]}\nC. {options[2]}\nD. {options[3]}\nE. {options[4]}\nAnswer:"
+            premise = f"""{multiple_choice_prompt} Question: {premise}\n\nWhat is the correct answer to the question from the following choices?\n(A) {options[0]}\n(B) {options[1]}\n(C) {options[2]}\n(D) {options[3]}"""
+        else:
+            hypotheses = options
+            premise = premise + uncond_premise
+        examples_bt += [{
+            'qid': qid,
+            'label': label,
+            'premise': premise,
+            'uncond_premise': uncond_premise,
+            'hypothesis0': hypotheses[0],
+            'hypothesis1': hypotheses[1],
+            'hypothesis2': hypotheses[2],
+            'hypothesis3': hypotheses[3],
+
+        }]
+    return examples_bt
+
+
+def load_data(multiple_choice_prompt):
+    num_options = 4
+    ending_names = ['hypothesis0', 'hypothesis1', 'hypothesis2', 'hypothesis3']
+    header_name = 'premise'
+    # file_path = "data/SP-eval.json"
+    file_path = "data/SP-train.json"
+    train_file_path = None
+    loader = brainteaser_loader
+
+    dev_data = loader(file_path, multiple_choice_prompt)
+    dev_dataset = Dataset.from_list(dev_data).with_format("torch")
+
+    if train_file_path is not None:
+        train_data = loader(train_file_path, multiple_choice_prompt)
+        train_dataset = Dataset.from_list(train_data).with_format("torch")
+    else:  # BB tasks have no train set.
+        train_dataset = dev_dataset
+    return ending_names, header_name, dev_dataset, train_dataset
 
 
 def preprocess_function_seq2seq(examples, **kwargs):
@@ -13,9 +71,6 @@ def preprocess_function_seq2seq(examples, **kwargs):
     # the tokenizer handles multiple spaces.
     first_sentences = [[context] * len(ending_names)
                        for context in examples[header_name]]
-    # second_sentences = [
-    #     [f"{header} {examples[end][i]}" for end in ending_names] for i, header in enumerate(question_header)
-    # ]
     second_sentences = [
         [f"{examples[end][i]}" for end in ending_names] for i, header in enumerate(question_headers)
     ]
@@ -47,6 +102,8 @@ def compute_conditional_score_seq2seq(batch, model, device, pad_token_id):
         -1, batch["header_attention_mask"].shape[-1]).to(device)
     ending_input_ids = batch["ending_input_ids"].view(
         -1, batch["ending_input_ids"].shape[-1]).to(device)
+
+    model = model.to(device)
 
     # adding this line of code takes me more than an hour.
     # without adding torch.no_grad, GPU usage will muiltply by 4.
@@ -161,19 +218,20 @@ def create_multiple_choice_prompt(example, **kwargs):
         premise = f"{multiple_choice_prompt}\n{example['premise']}"
         premise = premise.replace(f"{example['uncond_premise']}", "")
         for idx, single_mask in enumerate(mask):
-            option_start_index = premise.rfind(f"{alphabets[idx]}. ")
+            option_start_index = premise.rfind(f"({alphabets[idx]}) ")
             if idx == num_of_options - 1:
                 option_end_index = premise.rfind(f"Answer:")
             else:
-                option_end_index = premise.rfind(f"{alphabets[idx + 1]}. ")
+                option_end_index = premise.rfind(f"({alphabets[idx + 1]}) ")
             option = premise[option_start_index:option_end_index]
             if single_mask == 1:
                 pass
             else:
                 # consider other null strings.
                 premise = premise.replace(
-                    option, f"{alphabets[idx]}. {null_string}\n")
+                    option, f"({alphabets[idx]}) {null_string}\n")
     mcp_example['premise'] = premise
+    # print("mcp_example", mcp_example)
     return mcp_example
 
 
@@ -209,4 +267,29 @@ def inference_process_of_elimination(model, eval_dataloader, device, compute_fun
         pbar.set_description(
             f"Process of elimination accuracy: {lm_accuracy:.4f}, Average process of elimination accuracy: {avg_lm_accuracy:.4f}")
     avg_log_probs = torch.cat(avg_log_probs, dim=0)
-    return avg_log_probs, lm_accuracy, avg_lm_accuracy
+    return lm_predictions, lm_accuracy, avg_lm_accuracy
+
+
+def write_to_csv(path, mcp_dataset, lm_predictions):
+    lm_predictions = lm_predictions.tolist()
+    predictions_data = defaultdict(list)
+
+    for i, mcq in enumerate(mcp_dataset):
+        qid = mcq['qid']
+        predictions_data['id'].append(qid)
+        predictions_data['question'].append(mcq['premise'])
+        gold_label = mcq['label'].item()
+        predictions_data['label'].append(gold_label)
+        if 'SR' in qid:
+            predictions_data['group'].append('SR')
+        elif 'CR' in qid:
+            predictions_data['group'].append('CR')
+        else:
+            predictions_data['group'].append('OG')
+        pred_label = int(lm_predictions[i])
+        predictions_data['prediction'].append(pred_label)
+        correct = 1 if pred_label == gold_label else 0
+        predictions_data['correct'].append(correct)
+
+    predictions_df = pd.DataFrame(predictions_data)
+    predictions_df.to_csv(path)
