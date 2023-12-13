@@ -15,7 +15,6 @@ def brainteaser_loader(path, multiple_choice_prompt):
     with open(path) as f:
         data = json.load(f)
 
-    count = 0
     for mcq in data:
         qid = mcq['id']
         label = mcq['label']
@@ -231,7 +230,6 @@ def create_multiple_choice_prompt(example, **kwargs):
                 premise = premise.replace(
                     option, f"({alphabets[idx]}) {null_string}\n")
     mcp_example['premise'] = premise
-    # print("mcp_example", mcp_example)
     return mcp_example
 
 
